@@ -1,4 +1,8 @@
 parameters:
+    content_service_url: '%env(CONTENT_SERVICE_URL)%'
+    openai_api_key: '%env(OPENAI_API_KEY)%'
+    openai_model: '%env(string:default:openai_default_model:OPENAI_MODEL)%'
+    openai_default_model: 'gpt-5-nano'
 
 services:
     _defaults:
@@ -11,3 +15,12 @@ services:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
             - '../src/Kernel.php'
+
+    App\Service\ContentApiClient:
+        arguments:
+            $contentServiceUrl: '%content_service_url%'
+
+    App\Service\OpenAIService:
+        arguments:
+            $apiKey: '%openai_api_key%'
+            $model: '%openai_model%'

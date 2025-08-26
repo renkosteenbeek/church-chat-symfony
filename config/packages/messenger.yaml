@@ -6,15 +6,29 @@ framework:
             async:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 options:
-                    auto_setup: false
+                    exchange:
+                        name: church.events
+                        type: topic
+                    queues:
+                        chat_queue:
+                            binding_keys:
+                                - 'content.ready'
+                                - 'signal.message.received'
+                    auto_setup: true
                 retry_strategy:
                     max_retries: 3
                     delay: 1000
                     multiplier: 2
                     max_delay: 0
+            
+            sync:
+                dsn: 'sync://'
 
         routing:
             App\Message\ProcessChatMessage: async
+            App\Message\ContentReadyMessage: async
+            App\Message\SignalMessageReceivedMessage: async
+            App\Message\NotificationSendMessage: sync
 
         buses:
             messenger.bus.default:

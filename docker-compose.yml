@@ -10,11 +10,15 @@ services:
       - DATABASE_URL=mysql://chat_user:chat_password@church-chat-mysql:3306/chat_db?serverVersion=8.0&charset=utf8mb4
       - MESSENGER_TRANSPORT_DSN=amqp://guest:guest@church-rabbitmq:5672/church
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-5-nano}
+      - CONTENT_SERVICE_URL=${CONTENT_SERVICE_URL:-http://church-content-service:8101}
+      - SIGNAL_SERVICE_URL=${SIGNAL_SERVICE_URL:-http://church-signal-service:8104}
       - RABBITMQ_HOST=church-rabbitmq
       - RABBITMQ_PORT=5672
       - RABBITMQ_USER=guest
       - RABBITMQ_PASSWORD=guest
       - RABBITMQ_VHOST=church
+      - SIGNAL_NUMBER=${SIGNAL_NUMBER:-+31682016353}
       - XDEBUG_MODE=${XDEBUG_MODE:-off}
       - PHP_IDE_CONFIG=serverName=church-chat
       - TZ=Europe/Amsterdam
@@ -46,11 +50,15 @@ services:
       - DATABASE_URL=mysql://chat_user:chat_password@church-chat-mysql:3306/chat_db?serverVersion=8.0&charset=utf8mb4
       - MESSENGER_TRANSPORT_DSN=amqp://guest:guest@church-rabbitmq:5672/church
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-5-nano}
+      - CONTENT_SERVICE_URL=${CONTENT_SERVICE_URL:-http://church-content-service:8101}
+      - SIGNAL_SERVICE_URL=${SIGNAL_SERVICE_URL:-http://church-signal-service:8104}
       - RABBITMQ_HOST=church-rabbitmq
       - RABBITMQ_PORT=5672
       - RABBITMQ_USER=guest
       - RABBITMQ_PASSWORD=guest
       - RABBITMQ_VHOST=church
+      - SIGNAL_NUMBER=${SIGNAL_NUMBER:-+31682016353}
       - TZ=Europe/Amsterdam
     volumes:
       - ./:/app
