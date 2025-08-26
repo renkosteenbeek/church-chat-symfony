@@ -1,0 +1,122 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/symfony/Dockerfile
+    container_name: church-chat-app
+    environment:
+      - APP_ENV=${APP_ENV:-prod}
+      - APP_DEBUG=${APP_DEBUG:-0}
+      - DATABASE_URL=mysql://chat_user:chat_password@church-chat-mysql:3306/chat_db?serverVersion=8.0&charset=utf8mb4
+      - MESSENGER_TRANSPORT_DSN=amqp://guest:guest@church-rabbitmq:5672/church
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - RABBITMQ_HOST=church-rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+      - RABBITMQ_VHOST=church
+      - XDEBUG_MODE=${XDEBUG_MODE:-off}
+      - PHP_IDE_CONFIG=serverName=church-chat
+      - TZ=Europe/Amsterdam
+    volumes:
+      - ./:/app
+      - ./storage:/app/storage
+    networks:
+      - church-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "php-fpm -t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/symfony/Dockerfile
+    container_name: church-chat-worker
+    command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/worker.conf"]
+    environment:
+      - APP_ENV=${APP_ENV:-prod}
+      - APP_DEBUG=${APP_DEBUG:-0}
+      - DATABASE_URL=mysql://chat_user:chat_password@church-chat-mysql:3306/chat_db?serverVersion=8.0&charset=utf8mb4
+      - MESSENGER_TRANSPORT_DSN=amqp://guest:guest@church-rabbitmq:5672/church
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - RABBITMQ_HOST=church-rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+      - RABBITMQ_VHOST=church
+      - TZ=Europe/Amsterdam
+    volumes:
+      - ./:/app
+      - ./storage:/app/storage
+      - ./docker/supervisor/worker.conf:/etc/supervisor/conf.d/worker.conf:ro
+    networks:
+      - church-network
+    depends_on:
+      app:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "supervisorctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  nginx:
+    image: nginx:alpine
+    container_name: church-chat-nginx
+    ports:
+      - "8100:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./public:/app/public:ro
+    networks:
+      - church-network
+    depends_on:
+      - app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mysql:
+    image: mysql:8.0
+    container_name: church-chat-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=chat_db
+      - MYSQL_USER=chat_user
+      - MYSQL_PASSWORD=chat_password
+      - TZ=Europe/Amsterdam
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - church-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "chat_user", "-pchat_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+
+networks:
+  church-network:
+    external: true
+
+volumes:
+  mysql_data:

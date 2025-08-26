@@ -1,0 +1,22 @@
+framework:
+    messenger:
+        default_bus: messenger.bus.default
+
+        transports:
+            async:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    auto_setup: false
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 2
+                    max_delay: 0
+
+        routing:
+            App\Message\ProcessChatMessage: async
+
+        buses:
+            messenger.bus.default:
+                middleware:
+                    - doctrine_transaction

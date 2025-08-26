@@ -1,0 +1,20 @@
+nelmio_api_doc:
+    documentation:
+        info:
+            title: Church Chat API
+            description: 'API voor de Church Chat Service - AI-powered chat interface'
+            version: 1.0.0
+        servers:
+            - url: http://localhost:8100
+              description: Local development server
+        components:
+            securitySchemes:
+                Bearer:
+                    type: http
+                    scheme: bearer
+                    bearerFormat: JWT
+    areas:
+        path_patterns:
+            - ^/api
+    models:
+        use_jms: false
