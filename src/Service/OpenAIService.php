@@ -199,9 +199,6 @@ class OpenAIService
                         null
                     );
                     
-                    if (isset($response['usage'])) {
-                        $assistantHistory->addMetadata('usage', $response['usage']);
-                    }
                     
                     $this->chatHistoryRepository->save($assistantHistory, true);
                 }
@@ -221,7 +218,6 @@ class OpenAIService
                     [$toolCall]
                 );
                 
-                $assistantHistory->addMetadata('tool_call_details', $output);
                 $this->chatHistoryRepository->save($assistantHistory, true);
             }
         }

@@ -224,44 +224,19 @@ class ToolExecutor
                 }
 
             case 'register_attendance':
-                $attended = $arguments['attended'] ?? true;
-                $online = $arguments['online_attended'] ?? false;
-                
-                $attendanceData = [
-                    'attended' => $attended,
-                    'online' => $online,
-                    'date' => new \DateTime()
-                ];
-                
-                $member->addMetadata('last_attendance', $attendanceData);
+                $member->setLastAttendanceDate(new \DateTime());
                 $this->entityManager->persist($member);
                 $this->entityManager->flush();
 
                 return [
                     'success' => true,
-                    'message' => $attended 
-                        ? ($online ? 'Online aanwezigheid geregistreerd' : 'Aanwezigheid geregistreerd')
-                        : 'Afwezigheid geregistreerd'
+                    'message' => 'Aanwezigheid geregistreerd'
                 ];
 
             case 'register_absence':
-                $alternativeChurch = $arguments['alternative_church'] ?? null;
-                
-                $absenceData = [
-                    'attended' => false,
-                    'alternative_church' => $alternativeChurch,
-                    'date' => new \DateTime()
-                ];
-                
-                $member->addMetadata('last_attendance', $absenceData);
-                $this->entityManager->persist($member);
-                $this->entityManager->flush();
-
                 return [
                     'success' => true,
-                    'message' => $alternativeChurch
-                        ? "Geregistreerd dat je bij {$alternativeChurch} was"
-                        : 'Afwezigheid geregistreerd'
+                    'message' => 'Afwezigheid geregistreerd'
                 ];
 
             default:
@@ -284,7 +259,8 @@ class ToolExecutor
                 $member->setNotificationsReflection(false);
                 
                 if ($pauseUntil) {
-                    $member->addMetadata('notifications_paused_until', $pauseUntil);
+                    $pauseUntilDate = new \DateTime($pauseUntil);
+                    $member->setNotificationsPausedUntil($pauseUntilDate);
                 }
                 
                 $this->entityManager->persist($member);
@@ -300,7 +276,7 @@ class ToolExecutor
             case 'resume':
                 $member->setNotificationsNewService(true);
                 $member->setNotificationsReflection(true);
-                $member->addMetadata('notifications_paused_until', null);
+                $member->setNotificationsPausedUntil(null);
                 
                 $this->entityManager->persist($member);
                 $this->entityManager->flush();
@@ -314,12 +290,7 @@ class ToolExecutor
                 $notificationType = $arguments['notification_type'] ?? 'all';
                 $frequency = $arguments['frequency'] ?? 'weekly';
                 
-                $frequencySettings = [
-                    'type' => $notificationType,
-                    'frequency' => $frequency
-                ];
-                
-                $member->addMetadata('notification_frequency', $frequencySettings);
+                $member->setNotificationFrequency($frequency);
                 
                 if ($frequency === 'never') {
                     if ($notificationType === 'all' || $notificationType === 'summary') {
@@ -343,8 +314,8 @@ class ToolExecutor
                 
                 $member->setNotificationsNewService(false);
                 $member->setNotificationsReflection(false);
-                $member->addMetadata('unsubscribe_reason', $reason);
-                $member->addMetadata('unsubscribe_date', (new \DateTime())->format('Y-m-d'));
+                $member->setUnsubscribeReason($reason);
+                $member->setUnsubscribeDate(new \DateTime());
                 
                 $this->entityManager->persist($member);
                 $this->entityManager->flush();
@@ -380,11 +351,6 @@ class ToolExecutor
             'member_id' => $member->getId()
         ]);
 
-        $member->addMetadata('last_question', [
-            'question' => $question,
-            'category' => $category,
-            'timestamp' => (new \DateTime())->format('Y-m-d H:i:s')
-        ]);
         
         $this->entityManager->persist($member);
         $this->entityManager->flush();
@@ -419,7 +385,6 @@ class ToolExecutor
             'status' => 'open'
         ];
 
-        $member->addMetadata('last_feedback', $feedbackData);
         $this->entityManager->persist($member);
         
         try {
@@ -501,10 +466,4 @@ class ToolExecutor
         return $results;
     }
 
-    private function addMetadata(Member $member, string $key, mixed $value): void
-    {
-        $metadata = $member->getMetadata() ?? [];
-        $metadata[$key] = $value;
-        $member->setMetadata($metadata);
-    }
 }

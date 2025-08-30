@@ -61,9 +61,6 @@ class ContentStatus
     #[ORM\Column(type: Types::INTEGER)]
     private int $retryCount = 0;
 
-    #[ORM\Column(type: Types::JSON, nullable: true)]
-    private ?array $metadata = null;
-
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private \DateTimeInterface $createdAt;
 
@@ -247,23 +244,4 @@ class ContentStatus
         ];
     }
 
-    public function getMetadata(): ?array
-    {
-        return $this->metadata;
-    }
-
-    public function setMetadata(?array $metadata): self
-    {
-        $this->metadata = $metadata;
-        return $this;
-    }
-
-    public function addMetadata(string $key, mixed $value): self
-    {
-        if ($this->metadata === null) {
-            $this->metadata = [];
-        }
-        $this->metadata[$key] = $value;
-        return $this;
-    }
 }

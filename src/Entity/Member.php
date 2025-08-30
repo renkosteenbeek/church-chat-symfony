@@ -81,8 +81,20 @@ class Member
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private \DateTimeInterface $updatedAt;
 
-    #[ORM\Column(type: Types::JSON, nullable: true)]
-    private ?array $metadata = null;
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $lastAttendanceDate = null;
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $notificationsPausedUntil = null;
+
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $notificationFrequency = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $unsubscribeReason = null;
+
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $unsubscribeDate = null;
 
     public function __construct()
     {
@@ -303,28 +315,58 @@ class Member
         ];
     }
 
-    public function getMetadata(): ?array
+    public function getLastAttendanceDate(): ?\DateTimeInterface
     {
-        return $this->metadata;
+        return $this->lastAttendanceDate;
     }
 
-    public function setMetadata(?array $metadata): self
+    public function setLastAttendanceDate(?\DateTimeInterface $lastAttendanceDate): self
     {
-        $this->metadata = $metadata;
+        $this->lastAttendanceDate = $lastAttendanceDate;
         return $this;
     }
 
-    public function addMetadata(string $key, mixed $value): self
+    public function getNotificationsPausedUntil(): ?\DateTimeInterface
     {
-        if ($this->metadata === null) {
-            $this->metadata = [];
-        }
-        $this->metadata[$key] = $value;
+        return $this->notificationsPausedUntil;
+    }
+
+    public function setNotificationsPausedUntil(?\DateTimeInterface $notificationsPausedUntil): self
+    {
+        $this->notificationsPausedUntil = $notificationsPausedUntil;
         return $this;
     }
 
-    public function getMetadataValue(string $key): mixed
+    public function getNotificationFrequency(): ?string
     {
-        return $this->metadata[$key] ?? null;
+        return $this->notificationFrequency;
+    }
+
+    public function setNotificationFrequency(?string $notificationFrequency): self
+    {
+        $this->notificationFrequency = $notificationFrequency;
+        return $this;
+    }
+
+    public function getUnsubscribeReason(): ?string
+    {
+        return $this->unsubscribeReason;
+    }
+
+    public function setUnsubscribeReason(?string $unsubscribeReason): self
+    {
+        $this->unsubscribeReason = $unsubscribeReason;
+        return $this;
+    }
+
+    public function getUnsubscribeDate(): ?\DateTimeInterface
+    {
+        return $this->unsubscribeDate;
+    }
+
+    public function setUnsubscribeDate(?\DateTimeInterface $unsubscribeDate): self
+    {
+        $this->unsubscribeDate = $unsubscribeDate;
+        return $this;
     }
 }

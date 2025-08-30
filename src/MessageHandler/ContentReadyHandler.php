@@ -71,7 +71,6 @@ class ContentReadyHandler
                 $contentStatus->setMember($member);
                 $contentStatus->setChurchId($message->churchId);
                 $contentStatus->setStatus(ContentStatus::STATUS_QUEUED);
-                $contentStatus->setMetadata($contentData);
 
                 $churchIds = $member->getChurchIds();
                 if (count($churchIds) > 1) {

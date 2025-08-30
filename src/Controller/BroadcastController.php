@@ -65,7 +65,6 @@ class BroadcastController extends AbstractController
                 $contentStatus = new ContentStatus();
                 $contentStatus->setContentId($data['sermon_id']);
                 $contentStatus->setMember($member);
-                $contentStatus->setMetadata($data['metadata'] ?? []);
 
                 $churchIds = $member->getChurchIds();
                 if (count($churchIds) > 1) {
