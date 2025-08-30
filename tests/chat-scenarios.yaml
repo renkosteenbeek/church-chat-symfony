@@ -1,0 +1,188 @@
+# Chat Testing Scenarios for Autonomous Testing
+# This file defines test cases that Claude Code can use to validate chat service behavior
+
+scenarios:
+  # Name Recognition Tests
+  - name: name_recognition
+    description: "Test if names are correctly recognized and trigger manage_user tool"
+    inputs:
+      - "Mijn naam is Renko"
+      - "Ik heet Maria"
+      - "Ik ben Jan"
+      - "Maan naam is Piet"  # Typo test
+      - "M'n naam is Sarah"  # Informal
+    expected:
+      tool_calls: ["manage_user"]
+      response_contains: ["Hallo"]
+
+  # Age and Profile Management  
+  - name: user_profile_management
+    description: "Test user profile updates (age, church, target group)"
+    inputs:
+      - "Ik ben 25 jaar oud"
+      - "Mijn kerk is de Dorpskerk"
+      - "Ik ga naar de Grote Kerk in Amsterdam"
+      - "Ik ben 16 jaar"
+      - "Ik wil content voor jongeren"
+    expected:
+      tool_calls: ["manage_user"]
+      response_min_length: 20
+
+  # Sermon Attendance (Context-dependent)
+  - name: sermon_attendance_positive
+    description: "Test positive sermon attendance responses"
+    setup:
+      context: "question_asked: 'Was je bij de dienst?'"
+    inputs:
+      - "Ja"
+      - "Ja, ik was erbij"
+      - "Yep, geweldige preek!"
+      - "Jazeker, heel inspirerend"
+      - "Yes!"
+    expected:
+      tool_calls: ["handle_sermon"]
+      response_contains: ["samenvatting", "preek"]
+
+  - name: sermon_attendance_negative
+    description: "Test negative sermon attendance responses"
+    setup:
+      context: "question_asked: 'Was je bij de dienst?'"
+    inputs:
+      - "Nee"
+      - "Nee, helaas niet"
+      - "Nee, ik kon er niet bij zijn"
+      - "Helaas gemist"
+      - "Nope"
+    expected:
+      tool_calls: ["handle_sermon"]
+      response_contains: ["samenvatting", "gemist"]
+
+  # Direct Sermon Requests
+  - name: sermon_summary_requests
+    description: "Test direct requests for sermon summaries"
+    inputs:
+      - "Kan ik een samenvatting krijgen?"
+      - "Geef me de hoofdpunten van de preek"
+      - "Wat waren de kernboodschappen?"
+      - "Kun je de preek samenvatten?"
+      - "Ik wil graag een overzicht"
+    expected:
+      tool_calls: ["handle_sermon"]
+      response_min_length: 50
+
+  # Theological Questions
+  - name: theological_questions
+    description: "Test theological and biblical questions"
+    inputs:
+      - "Wat betekent genade?"
+      - "Wie is Jezus?"
+      - "Wat is verzoening?"
+      - "Hoe moet ik bidden?"
+      - "Wat zegt de Bijbel over liefde?"
+      - "Wat is de betekenis van het kruis?"
+    expected:
+      tool_calls: ["answer_question"]
+      response_min_length: 100
+      response_contains: ["Bijbel", "God", "geloof"]
+
+  # Sermon-specific Questions
+  - name: sermon_questions
+    description: "Test questions about specific sermon content"
+    inputs:
+      - "Wat bedoelde de dominee met die passage?"
+      - "Ik begreep dat stuk over liefde niet helemaal"
+      - "Kun je die bijbeltekst uitleggen?"
+      - "Hoe past dat in mijn dagelijks leven?"
+      - "Wat was de context van die tekst?"
+    expected:
+      tool_calls: ["answer_question"]
+      response_min_length: 80
+
+  # Subscription Management
+  - name: subscription_management
+    description: "Test subscription and notification preferences"
+    inputs:
+      - "Ik krijg te veel berichten"
+      - "Kan ik minder notificaties krijgen?"
+      - "Stop de berichten"
+      - "Ik wil me afmelden"
+      - "Pauzeer de updates even"
+      - "Zet de berichten uit"
+    expected:
+      tool_calls: ["manage_subscription"]
+      response_contains: ["notificaties", "berichten", "instellingen"]
+
+  # Feedback and Support
+  - name: feedback_processing
+    description: "Test feedback and support requests"
+    inputs:
+      - "De app werkt niet goed"
+      - "Ik heb een probleem met de berichten"
+      - "Dit is een geweldige service!"
+      - "Kunnen jullie ook audioberichten sturen?"
+      - "De preek was onduidelijk"
+      - "Bedankt voor de hulp"
+    expected:
+      tool_calls: ["process_feedback"]
+      response_min_length: 30
+
+  # Context Confusion Tests
+  - name: ambiguous_responses
+    description: "Test handling of ambiguous or unclear responses"
+    inputs:
+      - "Ja"  # Without context
+      - "Misschien"
+      - "Weet ik niet"
+      - "Hmm"
+      - "Dat snap ik niet"
+      - "Huh?"
+    expected:
+      response_contains: ["verduidelijken", "begrijp", "vraag", "help"]
+      response_min_length: 20
+
+  # Mixed Input Tests
+  - name: combined_information
+    description: "Test messages with multiple pieces of information"
+    inputs:
+      - "Hallo, mijn naam is Renko en ik ben 35 jaar"
+      - "Ik was erbij zondag, geweldige preek! Ik heet Maria trouwens"
+      - "Nee ik was er niet, maar kan ik een samenvatting krijgen? Ik ben 28 jaar"
+      - "Bedankt! Mijn naam is Jan en ik ga naar de Dorpskerk"
+    expected:
+      tool_calls: ["manage_user"]
+      response_min_length: 40
+
+  # Informal Language Tests  
+  - name: informal_language
+    description: "Test handling of informal Dutch language and slang"
+    inputs:
+      - "Heyyy, hoe gaat ie?"
+      - "Joo, was een dikke preek!"
+      - "Nah man, kon er niet bij zijn"
+      - "Vet cool deze service!"
+      - "Yo, ik snap die tekst niet"
+    expected:
+      response_min_length: 20
+      # No specific tool calls required - should handle gracefully
+
+  # Error Recovery Tests
+  - name: error_recovery
+    description: "Test recovery from misunderstood inputs"
+    inputs:
+      - "abcdef"  # Nonsense
+      - "123456"  # Numbers only
+      - "............."  # Punctuation
+      - ""  # Empty (if possible)
+      - "HOOOOOI"  # Excessive caps
+    expected:
+      response_contains: ["begrijp", "help", "vraag"]
+      response_min_length: 15
+
+# Test Configuration
+test_config:
+  default_timeout_ms: 30000
+  max_retries: 2
+  success_threshold: 0.75  # 75% success rate required
+  performance_targets:
+    avg_latency_ms: 2000
+    p95_latency_ms: 5000
