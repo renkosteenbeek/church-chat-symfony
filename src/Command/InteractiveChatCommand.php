@@ -97,6 +97,22 @@ EOF
             return $this->testTools();
         }
         
+        // Non-interactive mode: read from stdin if available
+        if (!$input->isInteractive()) {
+            $stdin = file_get_contents('php://stdin');
+            if ($stdin) {
+                $lines = explode("\n", trim($stdin));
+                foreach ($lines as $line) {
+                    $line = trim($line);
+                    if ($line && !in_array(strtolower($line), ['exit', 'quit', '/stop'])) {
+                        $this->io->text('<fg=cyan>You:</> ' . $line);
+                        $this->processMessage($line);
+                    }
+                }
+                return Command::SUCCESS;
+            }
+        }
+        
         return $this->runChatLoop($input, $output);
     }
     
