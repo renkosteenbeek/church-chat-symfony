@@ -69,6 +69,7 @@ class ContentReadyHandler
                 $contentStatus = new ContentStatus();
                 $contentStatus->setContentId($message->sermonId);
                 $contentStatus->setMember($member);
+                $contentStatus->setChurchId($message->churchId);
                 $contentStatus->setStatus(ContentStatus::STATUS_QUEUED);
                 $contentStatus->setMetadata($contentData);
 

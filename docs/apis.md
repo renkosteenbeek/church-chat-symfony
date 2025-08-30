@@ -70,7 +70,7 @@ POST https://api.openai.com/v1/conversations
     {
       "type": "message",
       "role": "assistant",
-      "content": "Wow dat was een mooie preek: Samengevat: Heb elkaar lief!!"
+      "content": "Wow dat was een mooie preek! Was je erbij en wil je een samenvatting?"
     }
   ]
 }
@@ -90,18 +90,19 @@ POST https://api.openai.com/v1/conversations
 
 > **Belangrijk:** Het conversation ID moet worden opgeslagen totdat er een nieuwe preek beschikbaar komt.
 
-## 3. Gebruiker Response Verwerking
+## 3. Gebruiker Response API voor chatflow
 
 Bij elke nieuwe communicatie van de gebruiker wordt dezelfde flow gevolgd:
 
 1. Conversation ID meesturen
-2. System prompt toevoegen
-3. Tools beschikbaar maken (inclusief vector store)
-4. Gebruikersinput verwerken
+2. Als OpenAI aangeeft dat er een tool moet worden gebruikt, dan wordt dit uitgevoerd
+4. De response moet dan worden teruggestuurd naar OpenAI, dan dan krijgen we weer nieuwe content.
+3. Uiteindelijk: Response teruggeven naar de gebruiker.
 
 Het AI-model bepaalt zelfstandig welke actie nodig is: zoeken in files, een tool gebruiken, of anders reageren.
 
-## 4. Normale Response Flow
+Zie request_design.json, dit is de request die ik altijd wil opsturen. Deze prompt is namelijk goed getest.
+Hierin moet natuurlijk het echte conversation id, de vector store id vanuit de church database en de input van de user.
 
 ### Request Example
 
@@ -673,4 +674,4 @@ Na het uitvoeren van de tool moet het resultaat teruggestuurd worden:
 2. **Bij broadcast** wordt een Conversation gestart met het uitgaande bericht
 3. **Bij gebruikersinput** wordt de conversation gebruikt met alle benodigde tools
 4. **Het AI model** bepaalt zelf welke actie nodig is (file search, tool gebruik, etc.)
-5. **Bij tool gebruik** volgt een twee-staps proces: tool call → tool execution → final response
+5. **Bij tool gebruik** volgt een twee-staps proces: tool call → tool execution → final response. Er kunnen diverse tool executions achter elkaar zijn

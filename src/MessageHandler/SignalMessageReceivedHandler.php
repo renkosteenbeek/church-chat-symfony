@@ -8,6 +8,8 @@ use App\Message\SignalMessageReceivedMessage;
 use App\Repository\MemberRepository;
 use App\Service\EventPublisher;
 use App\Service\OpenAIService;
+use App\Service\ToolExecutor;
+use App\Service\SignalServiceClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -19,6 +21,8 @@ class SignalMessageReceivedHandler
         private readonly EntityManagerInterface $entityManager,
         private readonly MemberRepository $memberRepository,
         private readonly OpenAIService $openAIService,
+        private readonly ToolExecutor $toolExecutor,
+        private readonly SignalServiceClient $signalServiceClient,
         private readonly EventPublisher $eventPublisher,
         private readonly LoggerInterface $logger
     ) {}
@@ -39,90 +43,51 @@ class SignalMessageReceivedHandler
                     'phone_number' => $phoneNumber
                 ]);
                 
-                $this->eventPublisher->publishNotification(
+                $this->signalServiceClient->sendMessage(
                     $message->sender,
-                    'Je bent nog niet geregistreerd. Neem contact op met je kerk voor registratie.'
+                    'Je bent nog niet geregistreerd. Neem contact op met je kerk voor registratie.',
+                    ['type' => 'not_registered']
                 );
                 return;
             }
 
-            $chatHistory = new ChatHistory();
-            $chatHistory->setMember($member);
-            $chatHistory->setRole('user');
-            $chatHistory->setContent($message->message);
-            $chatHistory->setMetadata([
-                'source' => 'signal',
-                'timestamp' => $message->timestamp,
-                'raw_data' => $message->rawData
-            ]);
-            $this->entityManager->persist($chatHistory);
-            $this->entityManager->flush();
-
-            if (!$member->getConversationId()) {
+            $conversationId = $member->getOpenaiConversationId();
+            
+            if (!$conversationId) {
                 $this->logger->warning('Member has no active conversation', [
                     'member_id' => $member->getId()
                 ]);
                 
-                $this->eventPublisher->publishNotification(
+                $this->signalServiceClient->sendMessage(
                     $message->sender,
-                    'Je hebt nog geen actieve conversatie. Wacht tot de volgende preek beschikbaar is.'
+                    'Je hebt nog geen actieve conversatie. Wacht tot de volgende preek beschikbaar is.',
+                    ['type' => 'no_conversation']
                 );
                 return;
             }
 
             $activeChurchId = null;
-            if ($member->getActiveSermon()) {
-                $metadata = $member->getActiveSermon();
-                $activeChurchId = $metadata['church_id'] ?? null;
-            }
-
-            if (!$activeChurchId && count($member->getChurchIds()) > 0) {
-                $activeChurchId = $member->getChurchIds()[0];
+            $churchIds = $member->getChurchIds();
+            if (!empty($churchIds)) {
+                $activeChurchId = $churchIds[0];
             }
 
             $response = $this->openAIService->sendMessage(
-                $member->getConversationId(),
+                $conversationId,
                 $message->message,
                 $activeChurchId ?? 0,
                 $member
             );
 
-            $assistantMessage = $response['message'] ?? null;
-            
-            if ($assistantMessage) {
-                $assistantHistory = new ChatHistory();
-                $assistantHistory->setMember($member);
-                $assistantHistory->setRole('assistant');
-                $assistantHistory->setContent($assistantMessage);
-                $assistantHistory->setMetadata([
-                    'conversation_id' => $member->getConversationId(),
-                    'tool_calls' => $response['tool_calls'] ?? []
-                ]);
-                $this->entityManager->persist($assistantHistory);
-                $this->entityManager->flush();
+            $this->processOpenAIResponse($response, $member, $conversationId, $activeChurchId ?? 0);
 
-                $this->eventPublisher->publishNotification(
-                    $message->sender,
-                    $assistantMessage
-                );
-            }
-
-            if (!empty($response['tool_calls'])) {
-                foreach ($response['tool_calls'] as $toolCall) {
-                    $this->logger->info('Tool call executed', [
-                        'tool' => $toolCall['function'] ?? 'unknown',
-                        'member_id' => $member->getId()
-                    ]);
-                }
-            }
-
-            $member->setLastActivity(new \DateTime());
+            $member->updateLastActivity();
             $this->entityManager->persist($member);
             $this->entityManager->flush();
 
             $this->logger->info('Signal message processed successfully', [
                 'member_id' => $member->getId(),
-                'conversation_id' => $member->getConversationId()
+                'conversation_id' => $conversationId
             ]);
 
         } catch (\Exception $e) {
@@ -132,10 +97,96 @@ class SignalMessageReceivedHandler
                 'trace' => $e->getTraceAsString()
             ]);
             
-            $this->eventPublisher->publishNotification(
+            $this->signalServiceClient->sendMessage(
                 $message->sender,
-                'Er is een fout opgetreden bij het verwerken van je bericht. Probeer het later opnieuw.'
+                'Er is een fout opgetreden bij het verwerken van je bericht. Probeer het later opnieuw.',
+                ['type' => 'error']
             );
+        }
+    }
+
+    private function processOpenAIResponse(
+        array $response, 
+        \App\Entity\Member $member, 
+        string $conversationId,
+        int $churchId
+    ): void {
+        $toolCalls = $this->openAIService->extractToolCalls($response);
+        $responseText = $this->openAIService->extractResponseText($response);
+        
+        if (!empty($toolCalls)) {
+            $this->logger->info('Processing tool calls', [
+                'count' => count($toolCalls),
+                'member_id' => $member->getId()
+            ]);
+            
+            $this->processToolCalls($toolCalls, $member, $conversationId, $churchId);
+        } elseif ($responseText) {
+            $this->signalServiceClient->sendMessage(
+                $member->getPhoneNumber(),
+                $responseText,
+                [
+                    'type' => 'assistant_message',
+                    'conversation_id' => $conversationId
+                ]
+            );
+        }
+    }
+
+    private function processToolCalls(
+        array $toolCalls, 
+        \App\Entity\Member $member, 
+        string $conversationId,
+        int $churchId
+    ): void {
+        foreach ($toolCalls as $toolCall) {
+            if (!isset($toolCall['name']) || !isset($toolCall['call_id'])) {
+                continue;
+            }
+            
+            $arguments = $toolCall['arguments'] ?? '{}';
+            if (is_string($arguments)) {
+                $arguments = json_decode($arguments, true) ?? [];
+            }
+            
+            $this->logger->info('Executing tool call', [
+                'tool' => $toolCall['name'],
+                'call_id' => $toolCall['call_id'],
+                'arguments' => $arguments
+            ]);
+            
+            $toolResult = $this->toolExecutor->executeTool(
+                $toolCall['name'],
+                $arguments,
+                $member
+            );
+            
+            $toolResponse = $this->openAIService->sendToolOutput(
+                $conversationId,
+                $toolCall['call_id'],
+                $toolResult,
+                $member,
+                $churchId
+            );
+            
+            $finalResponseText = $this->openAIService->extractResponseText($toolResponse);
+            
+            if ($finalResponseText) {
+                $this->signalServiceClient->sendMessage(
+                    $member->getPhoneNumber(),
+                    $finalResponseText,
+                    [
+                        'type' => 'tool_response',
+                        'tool' => $toolCall['name'],
+                        'conversation_id' => $conversationId
+                    ]
+                );
+            }
+            
+            $additionalToolCalls = $this->openAIService->extractToolCalls($toolResponse);
+            if (!empty($additionalToolCalls)) {
+                $this->processToolCalls($additionalToolCalls, $member, $conversationId, $churchId);
+            }
         }
     }
 

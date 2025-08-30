@@ -81,6 +81,9 @@ class Member
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private \DateTimeInterface $updatedAt;
 
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $metadata = null;
+
     public function __construct()
     {
         $this->id = Uuid::v4()->toRfc4122();
@@ -298,5 +301,30 @@ class Member
             self::TARGET_GROUP_VERDIEPING,
             self::TARGET_GROUP_JONGEREN,
         ];
+    }
+
+    public function getMetadata(): ?array
+    {
+        return $this->metadata;
+    }
+
+    public function setMetadata(?array $metadata): self
+    {
+        $this->metadata = $metadata;
+        return $this;
+    }
+
+    public function addMetadata(string $key, mixed $value): self
+    {
+        if ($this->metadata === null) {
+            $this->metadata = [];
+        }
+        $this->metadata[$key] = $value;
+        return $this;
+    }
+
+    public function getMetadataValue(string $key): mixed
+    {
+        return $this->metadata[$key] ?? null;
     }
 }

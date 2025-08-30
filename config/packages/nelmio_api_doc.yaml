@@ -2,19 +2,19 @@ nelmio_api_doc:
     documentation:
         info:
             title: Church Chat API
-            description: 'API voor de Church Chat Service - AI-powered chat interface'
+            description: |
+                API voor de Church Chat Service - AI-powered chat interface met Signal integratie.
+                
+                Deze service verwerkt preek content, beheert gebruikers communicatie via Signal, 
+                en integreert met OpenAI GPT-5 nano voor intelligente conversaties.
             version: 1.0.0
         servers:
             - url: http://localhost:8100
               description: Local development server
-        components:
-            securitySchemes:
-                Bearer:
-                    type: http
-                    scheme: bearer
-                    bearerFormat: JWT
+            - url: http://church-chat-service:8100
+              description: Docker internal network
     areas:
-        path_patterns:
-            - ^/api
-    models:
-        use_jms: false
+        default:
+            path_patterns:
+                - ^/api/v1
+                - ^/health

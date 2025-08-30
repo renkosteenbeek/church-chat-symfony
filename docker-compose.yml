@@ -5,8 +5,8 @@ services:
       dockerfile: docker/symfony/Dockerfile
     container_name: church-chat-app
     environment:
-      - APP_ENV=${APP_ENV:-prod}
-      - APP_DEBUG=${APP_DEBUG:-0}
+      - APP_ENV=${APP_ENV:-dev}
+      - APP_DEBUG=${APP_DEBUG:-1}
       - DATABASE_URL=mysql://chat_user:chat_password@church-chat-mysql:3306/chat_db?serverVersion=8.0&charset=utf8mb4
       - MESSENGER_TRANSPORT_DSN=amqp://guest:guest@church-rabbitmq:5672/church
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -45,8 +45,8 @@ services:
     container_name: church-chat-worker
     command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/worker.conf"]
     environment:
-      - APP_ENV=${APP_ENV:-prod}
-      - APP_DEBUG=${APP_DEBUG:-0}
+      - APP_ENV=${APP_ENV:-dev}
+      - APP_DEBUG=${APP_DEBUG:-1}
       - DATABASE_URL=mysql://chat_user:chat_password@church-chat-mysql:3306/chat_db?serverVersion=8.0&charset=utf8mb4
       - MESSENGER_TRANSPORT_DSN=amqp://guest:guest@church-rabbitmq:5672/church
       - OPENAI_API_KEY=${OPENAI_API_KEY}

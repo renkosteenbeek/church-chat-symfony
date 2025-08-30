@@ -1,0 +1,176 @@
+{
+    "model": "gpt-5-nano",
+    "conversation": "conv_68b0a7a3d83881938c356bb0f3284ec00f9b6b524b185e05",
+    "store": true,
+    "instructions": "Je bent de Preek In Je Week assistent. KERNREGEL: Wees PROACTIEF - als je informatie kunt extraheren of een actie kunt ondernemen, gebruik dan DIRECT de relevante tool.\n\nWERKWIJZE:\n1. Parse ELKE input voor bruikbare informatie\n2. Gevonden? → Tool DIRECT gebruiken\n3. Dan pas natuurlijk reageren\n\nVOORBEELDEN:\n• 'Mijn naam is Renko' → manage_user tool → 'Hallo Renko!'\n• 'Maan naam is Renko' (typo) → manage_user tool → 'Hallo Renko!'\n• 'Ja graag' (na preek vraag) → handle_sermon tool\n• 'Wat betekent genade?' → answer_question tool\n• 'Te veel berichten' → manage_subscription tool\n\nCONTEXT: Check altijd of er een vraag openstaat zoals 'Was je bij de dienst?'\n\nTAAL: Persoonlijk (je/jij), warm, bondig.",
+    "input": [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "input_text",
+                    "text": "Yea!"
+                }
+            ]
+        }
+    ],
+    "tools": [
+        {
+            "type": "function",
+            "name": "handle_sermon",
+            "description": "GEBRUIK BIJ: ja/nee op samenvattingsvraag, aanwezigheid dienst, samenvatting verzoek, andere kerk bezocht",
+            "strict": false,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["get_summary", "register_attendance", "register_absence"],
+                        "description": "Welke actie uitvoeren"
+                    },
+                    "attended": {
+                        "type": "boolean",
+                        "description": "Was aanwezig bij dienst"
+                    },
+                    "wants_summary": {
+                        "type": "boolean",
+                        "description": "Wil samenvatting ontvangen"
+                    },
+                    "alternative_church": {
+                        "type": "string",
+                        "description": "Naam andere kerk indien bezocht"
+                    },
+                    "online_attended": {
+                        "type": "boolean",
+                        "description": "Online gekeken/geluisterd"
+                    }
+                },
+                "required": ["action"]
+            }
+        },
+        {
+            "type": "function",
+            "name": "manage_user",
+            "description": "GEBRUIK BIJ: naam genoemd, leeftijd, kerk wijzigen, doelgroep instellen. OOK BIJ TYPOS zoals 'maan naam'",
+            "strict": false,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Naam van gebruiker"
+                    },
+                    "age": {
+                        "type": "integer",
+                        "description": "Leeftijd"
+                    },
+                    "church": {
+                        "type": "string",
+                        "description": "Huidige kerk"
+                    },
+                    "target_group": {
+                        "type": "string",
+                        "enum": ["jongeren", "volwassenen", "verdieping", "gezinnen"],
+                        "description": "Content doelgroep"
+                    },
+                    "additional_info": {
+                        "type": "object",
+                        "description": "Overige gebruikersinfo"
+                    }
+                },
+                "required": []
+            }
+        },
+        {
+            "type": "function",
+            "name": "manage_subscription",
+            "description": "GEBRUIK BIJ: notificaties aanpassen, pauzeren, afmelden, te veel/weinig berichten",
+            "strict": false,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["change_frequency", "pause", "unsubscribe", "resume"],
+                        "description": "Type actie"
+                    },
+                    "notification_type": {
+                        "type": "string",
+                        "enum": ["all", "summary", "reflection", "weekly"],
+                        "description": "Welke notificaties"
+                    },
+                    "frequency": {
+                        "type": "string",
+                        "enum": ["daily", "weekly", "biweekly", "never"],
+                        "description": "Nieuwe frequentie"
+                    },
+                    "pause_until": {
+                        "type": "string",
+                        "description": "Pauzeren tot datum (YYYY-MM-DD)"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Reden voor wijziging"
+                    }
+                },
+                "required": ["action"]
+            }
+        },
+        {
+            "type": "function",
+            "name": "answer_question",
+            "description": "GEBRUIK BIJ: vragen over geloof, God, Bijbel, preek betekenis, theologische onderwerpen",
+            "strict": false,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "question": {
+                        "type": "string",
+                        "description": "De gestelde vraag"
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": ["theology", "bible", "sermon", "faith", "practical"],
+                        "description": "Type vraag"
+                    },
+                    "needs_search": {
+                        "type": "boolean",
+                        "description": "Vector store doorzoeken voor context"
+                    }
+                },
+                "required": ["question", "category"]
+            }
+        },
+        {
+            "type": "function",
+            "name": "process_feedback",
+            "description": "GEBRUIK BIJ: feedback, klachten, suggesties, vragen over de app, technische problemen",
+            "strict": false,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": ["feedback", "complaint", "suggestion", "question", "technical"],
+                        "description": "Type feedback"
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "De feedback/vraag"
+                    },
+                    "severity": {
+                        "type": "string",
+                        "enum": ["low", "medium", "high"],
+                        "description": "Prioriteit"
+                    }
+                },
+                "required": ["type", "message"]
+            }
+        },
+        {
+            "type": "file_search",
+            "vector_store_ids": ["vs_68ad41abbd7c8191af5741654bf5d5cf"]
+        }
+    ],
+    "tool_choice": "auto"
+}

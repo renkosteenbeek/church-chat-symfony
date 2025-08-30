@@ -245,6 +245,160 @@ class ContentApiClient
         $this->logger->info('Content API cache cleared', ['prefix' => $prefix]);
     }
 
+    public function getSermonSummary(string $sermonId, string $targetGroup = 'volwassen'): ?array
+    {
+        $cacheKey = "sermon_summary_{$sermonId}_{$targetGroup}";
+        
+        try {
+            return $this->cache->get($cacheKey, function (ItemInterface $item) use ($sermonId, $targetGroup) {
+                $item->expiresAfter(self::CACHE_TTL * 2);
+                
+                $response = $this->httpClient->request('GET', "{$this->contentServiceUrl}/api/v1/sermons/{$sermonId}/summary", [
+                    'query' => ['audience' => $targetGroup]
+                ]);
+                
+                if ($response->getStatusCode() === 404) {
+                    return null;
+                }
+                
+                if ($response->getStatusCode() !== 200) {
+                    $this->logger->error('Failed to fetch sermon summary', [
+                        'sermon_id' => $sermonId,
+                        'target_group' => $targetGroup,
+                        'status_code' => $response->getStatusCode()
+                    ]);
+                    return null;
+                }
+                
+                return $response->toArray();
+            });
+        } catch (ExceptionInterface $e) {
+            $this->logger->error('Error fetching sermon summary from Content Service', [
+                'sermon_id' => $sermonId,
+                'target_group' => $targetGroup,
+                'error' => $e->getMessage()
+            ]);
+            
+            return null;
+        }
+    }
+
+    public function getChurchByName(string $churchName): ?array
+    {
+        $cacheKey = "church_by_name_" . md5(strtolower($churchName));
+        
+        try {
+            return $this->cache->get($cacheKey, function (ItemInterface $item) use ($churchName) {
+                $item->expiresAfter(self::CACHE_TTL);
+                
+                $response = $this->httpClient->request('GET', "{$this->contentServiceUrl}/api/v1/churches/search", [
+                    'query' => ['name' => $churchName]
+                ]);
+                
+                if ($response->getStatusCode() === 404) {
+                    return null;
+                }
+                
+                if ($response->getStatusCode() !== 200) {
+                    $this->logger->error('Failed to search church by name', [
+                        'church_name' => $churchName,
+                        'status_code' => $response->getStatusCode()
+                    ]);
+                    return null;
+                }
+                
+                $churches = $response->toArray();
+                
+                if (empty($churches['data'])) {
+                    return null;
+                }
+                
+                foreach ($churches['data'] as $church) {
+                    if (stripos($church['name'], $churchName) !== false) {
+                        return $church;
+                    }
+                }
+                
+                return $churches['data'][0] ?? null;
+            });
+        } catch (ExceptionInterface $e) {
+            $this->logger->error('Error searching church by name from Content Service', [
+                'church_name' => $churchName,
+                'error' => $e->getMessage()
+            ]);
+            
+            return null;
+        }
+    }
+
+    public function getReflectionQuestions(string $sermonId, string $targetGroup = 'volwassen'): ?array
+    {
+        $cacheKey = "reflection_questions_{$sermonId}_{$targetGroup}";
+        
+        try {
+            return $this->cache->get($cacheKey, function (ItemInterface $item) use ($sermonId, $targetGroup) {
+                $item->expiresAfter(self::CACHE_TTL * 4);
+                
+                $response = $this->httpClient->request('GET', "{$this->contentServiceUrl}/api/v1/sermons/{$sermonId}/reflections", [
+                    'query' => ['audience' => $targetGroup]
+                ]);
+                
+                if ($response->getStatusCode() === 404) {
+                    return null;
+                }
+                
+                if ($response->getStatusCode() !== 200) {
+                    $this->logger->error('Failed to fetch reflection questions', [
+                        'sermon_id' => $sermonId,
+                        'target_group' => $targetGroup,
+                        'status_code' => $response->getStatusCode()
+                    ]);
+                    return null;
+                }
+                
+                return $response->toArray();
+            });
+        } catch (ExceptionInterface $e) {
+            $this->logger->error('Error fetching reflection questions from Content Service', [
+                'sermon_id' => $sermonId,
+                'target_group' => $targetGroup,
+                'error' => $e->getMessage()
+            ]);
+            
+            return null;
+        }
+    }
+
+    public function submitFeedback(array $feedbackData): bool
+    {
+        try {
+            $response = $this->httpClient->request('POST', "{$this->contentServiceUrl}/api/v1/feedback", [
+                'json' => $feedbackData
+            ]);
+            
+            if ($response->getStatusCode() >= 200 && $response->getStatusCode() < 300) {
+                $this->logger->info('Feedback submitted successfully', [
+                    'feedback_id' => $feedbackData['id'] ?? 'unknown'
+                ]);
+                return true;
+            }
+            
+            $this->logger->error('Failed to submit feedback', [
+                'status_code' => $response->getStatusCode(),
+                'feedback_data' => $feedbackData
+            ]);
+            
+            return false;
+        } catch (ExceptionInterface $e) {
+            $this->logger->error('Error submitting feedback to Content Service', [
+                'feedback_data' => $feedbackData,
+                'error' => $e->getMessage()
+            ]);
+            
+            return false;
+        }
+    }
+
     public function invalidateChurchCache(int $churchId): void
     {
         $keysToInvalidate = [

@@ -30,7 +30,8 @@ class ProcessContentQueueCommand extends Command
         $this
             ->addOption('limit', 'l', InputOption::VALUE_REQUIRED, 'Number of items to process', 10)
             ->addOption('continuous', 'c', InputOption::VALUE_NONE, 'Run continuously')
-            ->addOption('interval', 'i', InputOption::VALUE_REQUIRED, 'Interval between runs in seconds', 5);
+            ->addOption('interval', 'i', InputOption::VALUE_REQUIRED, 'Interval between runs in seconds', 5)
+            ->addOption('parallel', 'p', InputOption::VALUE_NONE, 'Process items in parallel');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -39,15 +40,20 @@ class ProcessContentQueueCommand extends Command
         $limit = (int) $input->getOption('limit');
         $continuous = $input->getOption('continuous');
         $interval = (int) $input->getOption('interval');
+        $parallel = $input->getOption('parallel');
 
         $io->title('Content Queue Processor');
+
+        if ($parallel) {
+            $io->info('Parallel processing enabled');
+        }
 
         if ($continuous) {
             $io->info('Running in continuous mode. Press Ctrl+C to stop.');
             $io->info(sprintf('Processing %d items every %d seconds', $limit, $interval));
             
             while (true) {
-                $this->processQueue($io, $limit);
+                $this->processQueue($io, $limit, $parallel);
                 
                 if ($this->shouldStop()) {
                     $io->warning('Stop signal received. Exiting...');
@@ -57,14 +63,14 @@ class ProcessContentQueueCommand extends Command
                 sleep($interval);
             }
         } else {
-            $this->processQueue($io, $limit);
+            $this->processQueue($io, $limit, $parallel);
         }
 
         $io->success('Queue processing completed');
         return Command::SUCCESS;
     }
 
-    private function processQueue(SymfonyStyle $io, int $limit): void
+    private function processQueue(SymfonyStyle $io, int $limit, bool $parallel = false): void
     {
         try {
             $io->section('Processing scheduled content');
@@ -74,14 +80,15 @@ class ProcessContentQueueCommand extends Command
             }
 
             $io->section('Processing content queue');
-            $processed = $this->distributionService->processQueue($limit);
+            $processed = $this->distributionService->processQueue($limit, $parallel);
             
             if ($processed > 0) {
                 $io->success(sprintf('Processed %d content items', $processed));
                 
                 $this->logger->info('Content queue processed', [
                     'processed' => $processed,
-                    'limit' => $limit
+                    'limit' => $limit,
+                    'parallel' => $parallel
                 ]);
             } else {
                 $io->info('No items to process');

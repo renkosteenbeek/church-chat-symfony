@@ -8,6 +8,7 @@ use App\Repository\MemberRepository;
 use App\Repository\ChatHistoryRepository;
 use App\Service\OpenAIService;
 use App\Service\MemberService;
+use App\Service\ToolExecutor;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -22,6 +23,7 @@ class TestChatController extends AbstractController
     public function __construct(
         private readonly OpenAIService $openAIService,
         private readonly MemberService $memberService,
+        private readonly ToolExecutor $toolExecutor,
         private readonly MemberRepository $memberRepository,
         private readonly ChatHistoryRepository $chatHistoryRepository
     ) {}
@@ -97,23 +99,30 @@ class TestChatController extends AbstractController
             
             $response = $this->openAIService->sendMessage($conversationId, $message, $churchId, $member);
             
-            $responseContent = $this->extractResponseContent($response);
-            $toolCalls = $this->extractToolCalls($response);
+            $responseContent = $this->openAIService->extractResponseText($response);
+            $toolCalls = $this->openAIService->extractToolCalls($response);
             
             if (!empty($toolCalls)) {
                 foreach ($toolCalls as $toolCall) {
-                    if ($toolCall['name'] === 'update_user') {
-                        $toolResult = $this->handleUpdateUserTool($member, $toolCall);
-                        
-                        $followUpResponse = $this->openAIService->handleToolCall(
-                            $conversationId,
-                            $toolCall['call_id'],
-                            $toolResult,
-                            $member
-                        );
-                        
-                        $responseContent = $this->extractResponseContent($followUpResponse);
-                    }
+                    $arguments = is_string($toolCall['arguments']) 
+                        ? json_decode($toolCall['arguments'], true) 
+                        : $toolCall['arguments'];
+                    
+                    $toolResult = $this->toolExecutor->executeTool(
+                        $toolCall['name'],
+                        $arguments ?? [],
+                        $member
+                    );
+                    
+                    $followUpResponse = $this->openAIService->sendToolOutput(
+                        $conversationId,
+                        $toolCall['call_id'],
+                        $toolResult,
+                        $member,
+                        $churchId
+                    );
+                    
+                    $responseContent = $this->openAIService->extractResponseText($followUpResponse);
                 }
             }
             
@@ -264,71 +273,215 @@ class TestChatController extends AbstractController
         ]);
     }
 
-    private function handleUpdateUserTool(Member $member, array $toolCall): array
+    #[Route('/tools/list', methods: ['GET'])]
+    public function listAvailableTools(): JsonResponse
+    {
+        $tools = [
+            'manage_user' => [
+                'description' => 'Update user information (name, age, target group, church)',
+                'parameters' => ['name', 'age', 'target_group', 'church'],
+                'examples' => [
+                    ['name' => 'Jan', 'age' => 35],
+                    ['target_group' => 'jongeren'],
+                    ['church' => 'Nieuwe Kerk Amsterdam']
+                ]
+            ],
+            'handle_sermon' => [
+                'description' => 'Handle sermon-related actions',
+                'parameters' => ['action', 'attended', 'wants_summary', 'alternative_church', 'online_attended'],
+                'examples' => [
+                    ['action' => 'get_summary'],
+                    ['action' => 'register_attendance', 'attended' => true],
+                    ['action' => 'register_absence', 'alternative_church' => 'Andere Kerk']
+                ]
+            ],
+            'manage_subscription' => [
+                'description' => 'Manage notification subscriptions',
+                'parameters' => ['action', 'notification_type', 'frequency', 'pause_until', 'reason'],
+                'examples' => [
+                    ['action' => 'pause', 'pause_until' => '2025-09-01'],
+                    ['action' => 'change_frequency', 'frequency' => 'weekly'],
+                    ['action' => 'unsubscribe', 'reason' => 'Te veel berichten']
+                ]
+            ],
+            'answer_question' => [
+                'description' => 'Answer theological questions',
+                'parameters' => ['question', 'category', 'needs_search'],
+                'examples' => [
+                    ['question' => 'Wat betekent genade?', 'category' => 'theology'],
+                    ['question' => 'Waar staat het over liefde?', 'category' => 'bible', 'needs_search' => true]
+                ]
+            ],
+            'process_feedback' => [
+                'description' => 'Process user feedback',
+                'parameters' => ['type', 'message', 'severity'],
+                'examples' => [
+                    ['type' => 'feedback', 'message' => 'Zeer goede preek!', 'severity' => 'low'],
+                    ['type' => 'complaint', 'message' => 'Te veel berichten', 'severity' => 'medium'],
+                    ['type' => 'technical', 'message' => 'App crasht steeds', 'severity' => 'high']
+                ]
+            ]
+        ];
+        
+        return $this->json(['tools' => $tools]);
+    }
+
+    #[Route('/tools/test-all', methods: ['POST'])]
+    public function testAllTools(Request $request): JsonResponse
     {
         try {
-            $arguments = json_decode($toolCall['arguments'], true);
+            $data = json_decode($request->getContent(), true);
             
-            if (isset($arguments['name'])) {
-                $member->setFirstName($arguments['name']);
+            $phoneNumber = $data['phone_number'] ?? null;
+            $churchId = $data['church_id'] ?? 1;
+            
+            if (!$phoneNumber) {
+                return $this->json(['error' => 'Phone number is required'], 400);
             }
             
-            if (isset($arguments['age'])) {
-                $member->setAge($arguments['age']);
-            }
+            $member = $this->memberRepository->findOneBy(['phoneNumber' => $phoneNumber]);
             
+            if (!$member) {
+                return $this->json(['error' => 'Member not found'], 404);
+            }
+
+            $member->setActiveSermonId('test-sermon-123');
             $this->memberRepository->save($member, true);
             
-            return [
-                'success' => true,
-                'message' => 'Gebruiker opgeslagen'
+            $testCases = [
+                [
+                    'tool' => 'manage_user',
+                    'arguments' => ['name' => 'Test User', 'age' => 30, 'target_group' => 'volwassenen']
+                ],
+                [
+                    'tool' => 'handle_sermon',
+                    'arguments' => ['action' => 'register_attendance', 'attended' => true]
+                ],
+                [
+                    'tool' => 'handle_sermon', 
+                    'arguments' => ['action' => 'get_summary']
+                ],
+                [
+                    'tool' => 'manage_subscription',
+                    'arguments' => ['action' => 'change_frequency', 'frequency' => 'weekly']
+                ],
+                [
+                    'tool' => 'answer_question',
+                    'arguments' => ['question' => 'Test vraag over geloof', 'category' => 'faith']
+                ],
+                [
+                    'tool' => 'process_feedback',
+                    'arguments' => ['type' => 'feedback', 'message' => 'Test feedback bericht', 'severity' => 'low']
+                ]
             ];
-        } catch (\Exception $e) {
-            return [
-                'success' => false,
-                'message' => 'Fout bij opslaan: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    private function extractResponseContent(array $response): ?string
-    {
-        if (!isset($response['output']) || !is_array($response['output'])) {
-            return null;
-        }
-        
-        foreach ($response['output'] as $output) {
-            if ($output['type'] === 'message' && isset($output['content'])) {
-                foreach ($output['content'] as $content) {
-                    if ($content['type'] === 'output_text' && isset($content['text'])) {
-                        return $content['text'];
-                    }
-                }
-            }
-        }
-        
-        return null;
-    }
-
-    private function extractToolCalls(array $response): array
-    {
-        if (!isset($response['output']) || !is_array($response['output'])) {
-            return [];
-        }
-        
-        $toolCalls = [];
-        
-        foreach ($response['output'] as $output) {
-            if ($output['type'] === 'function_call') {
-                $toolCalls[] = [
-                    'id' => $output['id'] ?? null,
-                    'call_id' => $output['call_id'] ?? null,
-                    'name' => $output['name'] ?? null,
-                    'arguments' => $output['arguments'] ?? null
+            
+            $results = [];
+            
+            foreach ($testCases as $testCase) {
+                $startTime = microtime(true);
+                
+                $result = $this->toolExecutor->executeTool(
+                    $testCase['tool'],
+                    $testCase['arguments'],
+                    $member
+                );
+                
+                $executionTime = round((microtime(true) - $startTime) * 1000, 2);
+                
+                $results[] = [
+                    'tool' => $testCase['tool'],
+                    'arguments' => $testCase['arguments'],
+                    'result' => $result,
+                    'execution_time_ms' => $executionTime,
+                    'success' => $result['success'] ?? false
                 ];
             }
+            
+            $successfulTests = array_filter($results, fn($r) => $r['success']);
+            $failedTests = array_filter($results, fn($r) => !$r['success']);
+            
+            return $this->json([
+                'success' => true,
+                'total_tests' => count($testCases),
+                'successful' => count($successfulTests),
+                'failed' => count($failedTests),
+                'results' => $results,
+                'summary' => [
+                    'success_rate' => round((count($successfulTests) / count($testCases)) * 100, 2) . '%',
+                    'total_execution_time_ms' => array_sum(array_column($results, 'execution_time_ms'))
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
         }
-        
-        return $toolCalls;
     }
+
+    #[Route('/tools/validate', methods: ['POST'])]
+    public function validateToolCall(Request $request): JsonResponse
+    {
+        try {
+            $data = json_decode($request->getContent(), true);
+            
+            $toolName = $data['tool'] ?? null;
+            $arguments = $data['arguments'] ?? [];
+            
+            if (!$toolName) {
+                return $this->json(['error' => 'Tool name is required'], 400);
+            }
+            
+            $availableTools = ['manage_user', 'handle_sermon', 'manage_subscription', 'answer_question', 'process_feedback'];
+            
+            if (!in_array($toolName, $availableTools)) {
+                return $this->json([
+                    'valid' => false,
+                    'error' => "Unknown tool: {$toolName}",
+                    'available_tools' => $availableTools
+                ]);
+            }
+            
+            $requiredArguments = [
+                'manage_user' => [],
+                'handle_sermon' => ['action'],
+                'manage_subscription' => ['action'],
+                'answer_question' => ['question', 'category'],
+                'process_feedback' => ['type', 'message']
+            ];
+            
+            $required = $requiredArguments[$toolName];
+            $missing = [];
+            
+            foreach ($required as $field) {
+                if (!isset($arguments[$field]) || empty($arguments[$field])) {
+                    $missing[] = $field;
+                }
+            }
+            
+            if (!empty($missing)) {
+                return $this->json([
+                    'valid' => false,
+                    'error' => "Missing required arguments: " . implode(', ', $missing),
+                    'required' => $required,
+                    'provided' => array_keys($arguments)
+                ]);
+            }
+            
+            return $this->json([
+                'valid' => true,
+                'tool' => $toolName,
+                'arguments' => $arguments,
+                'message' => 'Tool call is valid'
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->json([
+                'valid' => false,
+                'error' => 'Validation failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 }
