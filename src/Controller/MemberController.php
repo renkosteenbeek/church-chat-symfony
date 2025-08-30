@@ -101,7 +101,26 @@ class MemberController extends AbstractController
             new OA\Response(
                 response: 200,
                 description: 'Member details',
-                content: new OA\JsonContent(ref: '#/components/schemas/Member')
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'id', type: 'string', format: 'uuid'),
+                        new OA\Property(property: 'phone_number', type: 'string'),
+                        new OA\Property(property: 'first_name', type: 'string'),
+                        new OA\Property(property: 'target_group', type: 'string'),
+                        new OA\Property(property: 'age', type: 'integer'),
+                        new OA\Property(property: 'church_ids', type: 'array', items: new OA\Items(type: 'integer')),
+                        new OA\Property(property: 'intake_completed', type: 'boolean'),
+                        new OA\Property(property: 'notifications_new_service', type: 'boolean'),
+                        new OA\Property(property: 'notifications_reflection', type: 'boolean'),
+                        new OA\Property(property: 'platform', type: 'string'),
+                        new OA\Property(property: 'active_sermon_id', type: 'integer'),
+                        new OA\Property(property: 'openai_conversation_id', type: 'string'),
+                        new OA\Property(property: 'active_since', type: 'string', format: 'date-time'),
+                        new OA\Property(property: 'last_activity', type: 'string', format: 'date-time'),
+                        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+                        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time')
+                    ]
+                )
             ),
             new OA\Response(
                 response: 404,
@@ -147,7 +166,26 @@ class MemberController extends AbstractController
             new OA\Response(
                 response: 201,
                 description: 'Member created successfully',
-                content: new OA\JsonContent(ref: '#/components/schemas/Member')
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'id', type: 'string', format: 'uuid'),
+                        new OA\Property(property: 'phone_number', type: 'string'),
+                        new OA\Property(property: 'first_name', type: 'string'),
+                        new OA\Property(property: 'target_group', type: 'string'),
+                        new OA\Property(property: 'age', type: 'integer'),
+                        new OA\Property(property: 'church_ids', type: 'array', items: new OA\Items(type: 'integer')),
+                        new OA\Property(property: 'intake_completed', type: 'boolean'),
+                        new OA\Property(property: 'notifications_new_service', type: 'boolean'),
+                        new OA\Property(property: 'notifications_reflection', type: 'boolean'),
+                        new OA\Property(property: 'platform', type: 'string'),
+                        new OA\Property(property: 'active_sermon_id', type: 'integer'),
+                        new OA\Property(property: 'openai_conversation_id', type: 'string'),
+                        new OA\Property(property: 'active_since', type: 'string', format: 'date-time'),
+                        new OA\Property(property: 'last_activity', type: 'string', format: 'date-time'),
+                        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+                        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time')
+                    ]
+                )
             ),
             new OA\Response(
                 response: 400,
@@ -235,7 +273,26 @@ class MemberController extends AbstractController
             new OA\Response(
                 response: 200,
                 description: 'Member updated successfully',
-                content: new OA\JsonContent(ref: '#/components/schemas/Member')
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'id', type: 'string', format: 'uuid'),
+                        new OA\Property(property: 'phone_number', type: 'string'),
+                        new OA\Property(property: 'first_name', type: 'string'),
+                        new OA\Property(property: 'target_group', type: 'string'),
+                        new OA\Property(property: 'age', type: 'integer'),
+                        new OA\Property(property: 'church_ids', type: 'array', items: new OA\Items(type: 'integer')),
+                        new OA\Property(property: 'intake_completed', type: 'boolean'),
+                        new OA\Property(property: 'notifications_new_service', type: 'boolean'),
+                        new OA\Property(property: 'notifications_reflection', type: 'boolean'),
+                        new OA\Property(property: 'platform', type: 'string'),
+                        new OA\Property(property: 'active_sermon_id', type: 'integer'),
+                        new OA\Property(property: 'openai_conversation_id', type: 'string'),
+                        new OA\Property(property: 'active_since', type: 'string', format: 'date-time'),
+                        new OA\Property(property: 'last_activity', type: 'string', format: 'date-time'),
+                        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+                        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time')
+                    ]
+                )
             ),
             new OA\Response(
                 response: 404,
@@ -334,7 +391,26 @@ class MemberController extends AbstractController
             new OA\Response(
                 response: 200,
                 description: 'Churches updated successfully',
-                content: new OA\JsonContent(ref: '#/components/schemas/Member')
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'id', type: 'string', format: 'uuid'),
+                        new OA\Property(property: 'phone_number', type: 'string'),
+                        new OA\Property(property: 'first_name', type: 'string'),
+                        new OA\Property(property: 'target_group', type: 'string'),
+                        new OA\Property(property: 'age', type: 'integer'),
+                        new OA\Property(property: 'church_ids', type: 'array', items: new OA\Items(type: 'integer')),
+                        new OA\Property(property: 'intake_completed', type: 'boolean'),
+                        new OA\Property(property: 'notifications_new_service', type: 'boolean'),
+                        new OA\Property(property: 'notifications_reflection', type: 'boolean'),
+                        new OA\Property(property: 'platform', type: 'string'),
+                        new OA\Property(property: 'active_sermon_id', type: 'integer'),
+                        new OA\Property(property: 'openai_conversation_id', type: 'string'),
+                        new OA\Property(property: 'active_since', type: 'string', format: 'date-time'),
+                        new OA\Property(property: 'last_activity', type: 'string', format: 'date-time'),
+                        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+                        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time')
+                    ]
+                )
             ),
             new OA\Response(
                 response: 404,
