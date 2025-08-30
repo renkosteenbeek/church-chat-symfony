@@ -97,7 +97,7 @@ EOF
             return $this->testTools();
         }
         
-        return $this->runChatLoop();
+        return $this->runChatLoop($input, $output);
     }
     
     private function initializeMember(InputInterface $input): bool
@@ -151,7 +151,7 @@ EOF
         );
     }
     
-    private function runChatLoop(): int
+    private function runChatLoop(InputInterface $input, OutputInterface $output): int
     {
         $this->io->success('Chat session started. Type "exit", "quit" or "/stop" to end.');
         $this->io->text('Special commands: /history, /reset, /info');
@@ -161,7 +161,7 @@ EOF
         
         while (true) {
             $question = new Question('<fg=cyan>You:</>  ');
-            $message = $helper->ask($input ?? $this->io->getInput(), $this->io, $question);
+            $message = $helper->ask($input, $output, $question);
             
             if (!$message) {
                 continue;
@@ -212,7 +212,7 @@ EOF
             
             sleep(2);
             
-            $latestHistory = $this->chatHistoryRepository->findLatestByMember($this->currentMember, 2);
+            $latestHistory = $this->chatHistoryRepository->findByMember($this->currentMember, 2);
             
             foreach (array_reverse($latestHistory) as $chat) {
                 if ($chat->getRole() === 'assistant') {
