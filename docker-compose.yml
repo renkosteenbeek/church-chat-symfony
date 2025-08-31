@@ -19,7 +19,9 @@ services:
       - RABBITMQ_PASSWORD=guest
       - RABBITMQ_VHOST=church
       - SIGNAL_NUMBER=${SIGNAL_NUMBER:-+31682016353}
+      - CONFIGURE_XDEBUG=${CONFIGURE_XDEBUG:-0}
       - XDEBUG_MODE=${XDEBUG_MODE:-off}
+      - XDEBUG_CONFIG=${XDEBUG_CONFIG:-idekey=PHPSTORM_CHURCH_CHAT}
       - PHP_IDE_CONFIG=serverName=church-chat
       - TZ=Europe/Amsterdam
     volumes:
@@ -59,6 +61,10 @@ services:
       - RABBITMQ_PASSWORD=guest
       - RABBITMQ_VHOST=church
       - SIGNAL_NUMBER=${SIGNAL_NUMBER:-+31682016353}
+      - CONFIGURE_XDEBUG=${CONFIGURE_XDEBUG:-0}
+      - XDEBUG_MODE=${XDEBUG_MODE:-off}
+      - XDEBUG_CONFIG=${XDEBUG_CONFIG:-idekey=PHPSTORM_CHURCH_CHAT}
+      - PHP_IDE_CONFIG=serverName=church-chat
       - TZ=Europe/Amsterdam
     volumes:
       - ./:/app
