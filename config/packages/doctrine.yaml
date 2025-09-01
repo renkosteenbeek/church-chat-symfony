@@ -5,6 +5,13 @@ doctrine:
         default_table_options:
             charset: utf8mb4
             collate: utf8mb4_unicode_ci
+        options:
+            1002: "SET SESSION wait_timeout = 28800"
+            1000: true
+            1001: true
+            persistent: false
+        server_version: '8.0'
+        use_savepoints: true
 
     orm:
         auto_generate_proxy_classes: true

@@ -52,10 +52,20 @@ class HealthController extends AbstractController
         ];
 
         try {
+            if (!$this->connection->isConnected()) {
+                $this->connection->connect();
+            }
             $this->connection->executeQuery('SELECT 1');
             $checks['database'] = true;
         } catch (\Exception $e) {
-            $this->logger->error('Database health check failed', ['error' => $e->getMessage()]);
+            try {
+                $this->connection->close();
+                $this->connection->connect();
+                $this->connection->executeQuery('SELECT 1');
+                $checks['database'] = true;
+            } catch (\Exception $retryException) {
+                $this->logger->error('Database health check failed after retry', ['error' => $retryException->getMessage()]);
+            }
         }
 
         $checks['rabbitmq'] = extension_loaded('amqp');
