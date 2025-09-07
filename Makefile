@@ -16,6 +16,7 @@ help:
 	@echo "  make test-chat              - Test chat service (all scenarios)"
 	@echo "  make test-chat-input INPUT= - Test single chat input"
 	@echo "  make test-chat-scenario SC= - Test specific scenario"
+	@echo "  make xdebug                 - Start containers with Xdebug enabled (port 9003)"
 
 .PHONY: up
 up:
@@ -77,3 +78,14 @@ test-chat-input:
 test-chat-scenario:
 	@if [ -z "$(SC)" ]; then echo "Usage: make test-chat-scenario SC=scenario_name"; exit 1; fi
 	docker exec church-chat-app php bin/console app:test-chat --scenario="$(SC)" --format=json
+
+.PHONY: xdebug
+xdebug:
+	@echo "🐛 Starting containers with Xdebug enabled..."
+	XDEBUG_MODE=debug \
+	XDEBUG_CONFIG="idekey=PHPSTORM client_host=host.docker.internal client_port=9003" \
+	PHP_IDE_CONFIG="serverName=church-chat" \
+	docker-compose up -d
+	@echo "✅ Xdebug is running on port 9003"
+	@echo "📝 Configure your IDE to listen on port 9003"
+	@echo "📝 Server name in PhpStorm: church-chat"
